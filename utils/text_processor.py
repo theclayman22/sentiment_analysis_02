@@ -3,6 +3,7 @@
 Text-Vorverarbeitung und -Utilities
 """
 
+import logging
 import re
 from typing import List, Optional
 import nltk
@@ -10,22 +11,36 @@ from nltk.tokenize import sent_tokenize, word_tokenize
 
 class TextProcessor:
     """Verarbeitet und bereinigt Texte für die Analyse"""
-    
+
     def __init__(self):
+        self.logger = logging.getLogger(self.__class__.__name__)
+        self._punkt_available = False
         self._ensure_nltk_data()
-    
+
     def _ensure_nltk_data(self):
         """Stellt sicher, dass NLTK-Daten verfügbar sind"""
         try:
             nltk.data.find('tokenizers/punkt')
+            self._punkt_available = True
+            return
         except LookupError:
-            nltk.download('punkt', quiet=True)
-        
+            pass
+
         try:
-            nltk.data.find('tokenizers/punkt_tab')
+            nltk.download('punkt', quiet=True, raise_on_error=False)
+            nltk.data.find('tokenizers/punkt')
+            self._punkt_available = True
         except LookupError:
-            nltk.download('punkt_tab', quiet=True)
-    
+            self.logger.warning(
+                "NLTK resource 'punkt' not available. Falling back to simple sentence splitting."
+            )
+            self._punkt_available = False
+        except Exception as exc:
+            self.logger.warning(
+                "Could not download NLTK resource 'punkt': %s", exc
+            )
+            self._punkt_available = False
+
     def clean_text(self, text: str) -> str:
         """Bereinigt Text für die Analyse"""
         if not text:
@@ -47,13 +62,24 @@ class TextProcessor:
     
     def split_into_sentences(self, text: str) -> List[str]:
         """Teilt Text in Sätze auf"""
-        try:
-            sentences = sent_tokenize(text)
-            return [self.clean_text(sent) for sent in sentences if sent.strip()]
-        except Exception:
-            # Fallback: Split by periods
-            sentences = text.split('.')
-            return [self.clean_text(sent) for sent in sentences if sent.strip()]
+        if self._punkt_available:
+            try:
+                sentences = sent_tokenize(text)
+                return [self.clean_text(sent) for sent in sentences if sent.strip()]
+            except LookupError:
+                self.logger.warning(
+                    "NLTK sentence tokenizer unavailable at runtime. Using fallback splitter."
+                )
+                self._punkt_available = False
+            except Exception as exc:
+                self.logger.warning(
+                    "Error during sentence tokenization: %s. Falling back to simple split.",
+                    exc,
+                )
+
+        # Fallback: Split by periods
+        sentences = text.split('.')
+        return [self.clean_text(sent) for sent in sentences if sent.strip()]
     
     def chunk_text(self, text: str, max_tokens: int = 500, overlap: int = 50) -> List[str]:
         """Teilt langen Text in Chunks mit Überlappung"""

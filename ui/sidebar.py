@@ -31,12 +31,17 @@ class SidebarUI:
             st.divider()
             
             # Modell-Auswahl
-            settings.update(self._render_model_selector(settings['analysis_type']))
-            
+            model_settings = self._render_model_selector(settings['analysis_type'])
+            settings.update(model_settings)
+            st.session_state['selected_models'] = model_settings.get('selected_models', [])
+
             st.divider()
-            
+
             # Erweiterte Einstellungen
-            settings.update(self._render_advanced_settings(settings['analysis_type']))
+            settings.update(self._render_advanced_settings(
+                settings['analysis_type'],
+                model_settings.get('selected_models', [])
+            ))
             
             st.divider()
             
@@ -119,12 +124,12 @@ class SidebarUI:
             "selected_models": selected_models
         }
     
-    def _render_advanced_settings(self, analysis_type: str) -> Dict[str, Any]:
+    def _render_advanced_settings(self, analysis_type: str, selected_models: List[str]) -> Dict[str, Any]:
         """Rendert erweiterte Einstellungen"""
         settings = {}
-        
+
         with st.expander("⚙️ Erweiterte Einstellungen"):
-            
+
             if analysis_type == "emotion_arc":
                 settings['n_segments'] = st.slider(
                     "Anzahl Segmente für Arc-Analyse",
@@ -133,9 +138,9 @@ class SidebarUI:
                     value=20,
                     help="Mehr Segmente = detailliertere Analyse, aber langsamere Verarbeitung"
                 )
-            
+
             # OpenAI-spezifische Einstellungen
-            if any("apt-5-nano" in model for model in st.session_state.get('selected_models', [])):
+            if any("apt-5-nano" in model for model in selected_models):
                 settings['reasoning_effort'] = st.selectbox(
                     "OpenAI Reasoning Effort",
                     options=["minimal", "low", "medium", "high"],
