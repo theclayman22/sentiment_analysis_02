@@ -80,12 +80,15 @@ class SentimentAnalysisApp:
         
         if 'analysis_results' not in st.session_state:
             st.session_state.analysis_results = []
-        
+
         if 'arc_results' not in st.session_state:
             st.session_state.arc_results = {}
-        
+
         if 'current_analysis_type' not in st.session_state:
             st.session_state.current_analysis_type = 'valence'
+
+        if 'selected_models' not in st.session_state:
+            st.session_state.selected_models = []
     
     def initialize_components(self):
         """Initialisiert alle Komponenten basierend auf aktueller Sprache"""
